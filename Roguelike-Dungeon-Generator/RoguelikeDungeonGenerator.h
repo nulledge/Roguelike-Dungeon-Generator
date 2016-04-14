@@ -16,12 +16,16 @@ struct DungeonInfo {
 	unsigned int width, height;
 	unsigned int depth;
 	bool** info;
+	DungeonInfo() {
+		width = height = depth = 0;
+		info = nullptr;
+	}
 };
 
 
 struct Point {
 	unsigned int x, y;
-	void Init() {
+	Point() {
 		x = y = 0;
 	}
 	void Init(int X, int Y) {
@@ -32,10 +36,6 @@ struct Point {
 
 struct Space {
 	Point upperLeft, downRight;
-	void Init() {
-		upperLeft.Init();
-		downRight.Init();
-	}
 	void Init(Point UpperLeft, Point DownRight) {
 		upperLeft.Init(UpperLeft.x, UpperLeft.y);
 		downRight.Init(DownRight.x, DownRight.y);
@@ -46,22 +46,18 @@ struct BSPNode {
 	bool isDivideInVertical;
 	BSPNode *frontNode, *rearNode;
 	Space space, room;
-	void Init() {
+	BSPNode() {
 		isDivideInVertical = 0;
 		frontNode = rearNode = nullptr;
-		space.Init();
-		room.Init();
 	}
-	void Init(Point UpperLeft, Point DownRight) {
-		isDivideInVertical = 0;
-		frontNode = rearNode = nullptr;
-		space.Init(UpperLeft, DownRight);
-		room.Init();
-	}
+	bool IsReafNode(void) { return (frontNode == nullptr && rearNode == nullptr); }
 };
 
 struct BSPTree {
 	BSPNode* root;
+	BSPTree() {
+		root = nullptr;
+	}
 };
 
 
@@ -87,6 +83,7 @@ protected:
 
 private:
 	void BSP(void);
+	void PathBuild(void);
 	void RandomRoomBuild(BSPNode* node);
 	void RandomPathBuild(BSPNode* node);
 };
