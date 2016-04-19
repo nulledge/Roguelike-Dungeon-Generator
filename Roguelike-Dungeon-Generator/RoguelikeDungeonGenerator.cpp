@@ -383,7 +383,7 @@ void RoguelikeDungeonGenerator::RandomPathBuild(BSPNode* node) {
 
 	/* Not implemented yet. */
 #ifdef _DEBUG
-	LOG("Not Implemented yet...");
+	LOG("Not implemented yet...");
 #endif // _DEBUG
 
 
@@ -398,10 +398,37 @@ void RoguelikeDungeonGenerator::PathBuild(void) {
 	_LEVEL++;
 #endif // _DEBUG
 
-	/* Not implemented. */
 #ifdef _DEBUG
-	LOG("Not implemented...");
+	LOG("Find Reaf Nodes...");
 #endif // _DEBUG
+
+	// find reaf nodes.
+	queue<BSPNode*>* workQueue = new queue<BSPNode*>();
+	workQueue->push(tree.root);
+	while (true) {
+		BSPNode* node = workQueue->front();
+
+		if (node->IsReafNode())
+			break;
+
+		workQueue->push(node->frontNode);
+		workQueue->push(node->rearNode);
+	}
+
+#ifdef _DEBUG
+	LOG("Build Pathes...");
+#endif // _DEBUG
+
+	// from bottom to top, connect child nodes.
+	while (workQueue->empty() == false) {
+		BSPNode* node = workQueue->front();
+		workQueue->pop();
+
+		if (node->IsReafNode())
+			continue;
+
+		RandomPathBuild(node);
+	}
 
 #ifdef _DEBUG
 	_LEVEL--;
