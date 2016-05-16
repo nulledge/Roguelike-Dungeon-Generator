@@ -316,14 +316,7 @@ void RoguelikeDungeonGenerator::RandomPathBuild(BSPNode* node) {
 	Log ("Record On Dungeon Info")
 	dungeon.info[pivot.x][pivot.y] = true;
 
-<<<<<<< HEAD
-	/* Not implemented yet. */
-#ifdef _DEBUG
-	LOG("Not implemented yet...");
-#endif // _DEBUG
-=======
 	Log (pivot.x << ", " << pivot.y)
->>>>>>> BRANCH01
 
 	Log ("Resize Room")
 	node->room.upperLeft = frontNode->room.upperLeft;
@@ -342,43 +335,6 @@ void RoguelikeDungeonGenerator::RandomPathBuild(BSPNode* node) {
 void RoguelikeDungeonGenerator::PathBuild(void) {
 	Enter
 
-<<<<<<< HEAD
-#ifdef _DEBUG
-	LOG("Find Reaf Nodes...");
-#endif // _DEBUG
-
-	// find reaf nodes.
-	queue<BSPNode*>* workQueue = new queue<BSPNode*>();
-	workQueue->push(tree.root);
-	while (true) {
-		BSPNode* node = workQueue->front();
-
-		if (node->IsReafNode())
-			break;
-
-		workQueue->push(node->frontNode);
-		workQueue->push(node->rearNode);
-	}
-
-#ifdef _DEBUG
-	LOG("Build Pathes...");
-#endif // _DEBUG
-
-	// from bottom to top, connect child nodes.
-	while (workQueue->empty() == false) {
-		BSPNode* node = workQueue->front();
-		workQueue->pop();
-
-		if (node->IsReafNode())
-			continue;
-
-		RandomPathBuild(node);
-	}
-
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
-=======
 	// traversalDeque is for search all nodes.
 	vector<BSPNode*>* nodes = new vector<BSPNode*>;
 	size_t index = 0;
@@ -391,8 +347,6 @@ void RoguelikeDungeonGenerator::PathBuild(void) {
 
 		if (node->IsReafNode())
 			break;
->>>>>>> BRANCH01
-
 		nodes->push_back(node->frontNode);
 		nodes->push_back(node->rearNode);
 	}
