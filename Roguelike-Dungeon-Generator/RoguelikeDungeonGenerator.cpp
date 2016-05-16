@@ -2,17 +2,27 @@
 
 #ifdef _DEBUG
 unsigned int _LEVEL = 0; // size of of indentation.
-// Log endline.
-void LOGENDL() {
-	for (unsigned int i = 0; i < _LEVEL; i++)
-		cout << "	";
-}
-// Log message with endline.
-void LOG(char* message) {
-	for (unsigned int i = 0; i < _LEVEL; i++)
-		cout << "	";
-	cout << message << endl;
-}
+#define Enter \
+	for (unsigned int i = 0; i < _LEVEL; i++) \
+		cout << "	"; \
+	cout << __func__ << "()" << endl;\
+	_LEVEL += 1;
+
+#define Log(x) \
+	for (unsigned int i = 0; i < _LEVEL; i++) \
+		cout << "	"; \
+	cout << x << endl;
+
+#define Exit \
+	_LEVEL -= 1;
+
+#else
+#define Enter \
+	do {} while(false);
+#define Log(x) \
+	do {} while(false);
+#define Exit \
+	do {} while(false);
 #endif // _DEBUG
 
 
@@ -36,11 +46,7 @@ unsigned int rand(unsigned int a, unsigned int b) {
 	}
 	return rand() % (b - a);
 }
-/*
-	Power with integer base and exponential.
-	Exponential must be non-negative.
-*/
-unsigned int pow(int base, unsigned int exp) {
+unsigned int pow(unsigned int base, unsigned int exp) {
 	unsigned int value = 1;
 	for (unsigned int i = 0; i < exp; i++)
 		value *= base;
@@ -48,187 +54,141 @@ unsigned int pow(int base, unsigned int exp) {
 }
 
 
-/*
-	Basic Constructor and Destructor
-*/
-// Default constructor.
 RoguelikeDungeonGenerator::RoguelikeDungeonGenerator(void) {
-#ifdef _DEBUG
-	LOG("Generator.Constructor()");
-	_LEVEL++;
-#endif // _DEBUG
+	Enter
 
-#ifdef _DEBUG
-	LOG("Constructor do nothing...");
-#endif // _DEBUG
+	Log("Constructor do nothing...")
 
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
+	Exit
 }
-// Destructor.
 RoguelikeDungeonGenerator::~RoguelikeDungeonGenerator(void) {
-#ifdef _DEBUG
-	LOG("Generator.Destructor()");
-	_LEVEL++;
-#endif // _DEBUG
+	Enter
 
-	// deallocate all refereneces used.
 	Deallocate();
 
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
+	Exit
 }
 
-
-/*
-	Set Dungeon Info
-*/
-// Set the width of a dungeon.
+bool RoguelikeDungeonGenerator::WidthIsChanged(unsigned int width) {
+	return dungeon.width != width;
+}
+bool RoguelikeDungeonGenerator::HeightIsChanged(unsigned int height) {
+	return dungeon.height != height;
+}
+bool RoguelikeDungeonGenerator::DepthIsChanged(unsigned int depth) {
+	return dungeon.depth != depth;
+}
+void RoguelikeDungeonGenerator::DiscardLegacyDungeonInfo() {
+	Deallocate();
+}
 void RoguelikeDungeonGenerator::SetWidth(unsigned int width) {
-#ifdef _DEBUG
-	LOG("Generator.SetWidth()");
-	_LEVEL++;
-#endif // _DEBUG
+	Enter
 
-	// if the width of a dungeon is changed then delete previous dungeon info.
-	if (dungeon.width != width)
-		Deallocate();
+	if (WidthIsChanged(width))
+		DiscardLegacyDungeonInfo();
 	dungeon.width = width;
 
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
+	Exit
 }
-// Set the height of a dungeon.
 void RoguelikeDungeonGenerator::SetHeight(unsigned int height) {
-#ifdef _DEBUG
-	LOG("Generator.SetHeight()");
-	_LEVEL++;
-#endif // _DEBUG
+	Enter
 
-	// if the height of a dungeon is changed then delete previous dungeon info.
-	if (dungeon.height != height)
-		Deallocate();
+	if (HeightIsChanged(height))
+		DiscardLegacyDungeonInfo();
 	dungeon.height = height;
 
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
+	Exit
 }
-// Set the depth of a dungeon.
-// A dungeon has 2^depth rooms.
 void RoguelikeDungeonGenerator::SetDepth(unsigned int depth) {
-#ifdef _DEBUG
-	LOG("Generator.SetDepth()");
-	_LEVEL++;
-#endif // _DEBUG
+	Enter
 
-	// if the depth of a dungeon is changed then delete previous dungeon info.
-	if (dungeon.depth != depth)
-		Deallocate();
+	if (DepthIsChanged(depth))
+		DiscardLegacyDungeonInfo();
 	dungeon.depth = depth;
 
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
+	Exit
 }
-// Allocate a dungeon info and a BSP tree.
-void RoguelikeDungeonGenerator::Allocate(void) {
-#ifdef _DEBUG
-	LOG(".Allocate(void)");
-	_LEVEL++;
-#endif // _DEBUG
 
-	// allocate and initialize a dungeon info.
+
+void RoguelikeDungeonGenerator::AllocateDungeonInfo(void) {
 	dungeon.info = new bool*[dungeon.width];
 	for (unsigned int i = 0; i < dungeon.width; i++) {
 		dungeon.info[i] = new bool[dungeon.height];
 		for (unsigned int j = 0; j < dungeon.height; j++)
 			dungeon.info[i][j] = false;
 	}
-
-#ifdef _DEBUG
-	LOG("dungeon info is allocated...");
-#endif // _DEBUG
-
-	// allocate and initialize BSP tree.
+}
+void RoguelikeDungeonGenerator::AllocateBSPTree(void) {
 	tree.root = new BSPNode;
-
-#ifdef _DEBUG
-	LOG("BSP tree is allocated...");
-	_LEVEL--;
-#endif // _DEBUG
-
 }
-// Deallocate all references.
+void RoguelikeDungeonGenerator::Allocate(void) {
+	Enter
+
+	AllocateDungeonInfo();
+	Log("dungeon info is allocated...")
+	AllocateBSPTree();
+	Log ("BSP tree is allocated...")
+	Exit
+}
+
+
+void RoguelikeDungeonGenerator::DeallocateDungeonInfo(void) {
+	for (unsigned int i = 0; i < dungeon.width; i++)
+		delete[] dungeon.info[i];
+	delete[] dungeon.info;
+	dungeon.info = nullptr;
+}
+void RoguelikeDungeonGenerator::SearchAllNodesInBSPTree(vector<BSPNode*>* traversalList) {
+	unsigned int index = 0;
+	traversalList->push_back(tree.root);
+
+	while (true) {
+		BSPNode* node = traversalList->at(index);
+		index += 1;
+
+		if (node->IsReafNode())
+			break;
+
+		traversalList->push_back(node->frontNode);
+		traversalList->push_back(node->rearNode);
+	}
+}
+void RoguelikeDungeonGenerator::DeallocateAllNodesInBSPTree(vector<BSPNode*>* traversalList) {
+	unsigned int index = (traversalList->empty() ? 0 : traversalList->size() - 1);
+	while (traversalList->empty() == false) {
+		BSPNode* node = traversalList->at(index);
+		index -= 1;
+		traversalList->pop_back();
+
+		if (node->frontNode != nullptr)
+			delete (node->frontNode);
+		if (node->rearNode != nullptr)
+			delete (node->rearNode);
+	}
+	delete tree.root;
+	tree.root = nullptr;
+}
 void RoguelikeDungeonGenerator::Deallocate(void) {
-#ifdef _DEBUG
-	LOG(".Deallocate(void)");
-	_LEVEL++;
-#endif // _DEBUG
+	Enter
 
-	// Deallocate the references in dungeon info.
 	if (dungeon.info != nullptr) {
-		for (unsigned int i = 0; i < dungeon.width; i++)
-			delete[] dungeon.info[i];
-		delete[] dungeon.info;
-		dungeon.info = nullptr;
-
-#ifdef _DEBUG
-		LOG("dungeon info is deallocated...");
-#endif // _DEBUG
+		DeallocateDungeonInfo();
+		Log("dungeon info is deallocated...")
 	}
 
-	// Deallocate the references in BSP tree.
 	if (tree.root != nullptr) {
-		stack<BSPNode*>* traversalStack = new stack<BSPNode*>;
-		traversalStack->push(tree.root);
-
-		while (true) {
-			BSPNode* node = traversalStack->top();
-
-			if (node->IsReafNode())
-				break;
-			
-			traversalStack->push(node->frontNode);
-			traversalStack->push(node->rearNode);
-		}
-		while (traversalStack->empty() == false) {
-			BSPNode* node = traversalStack->top();
-			traversalStack->pop();
-
-			if (node->frontNode != nullptr)
-				delete (node->frontNode);
-			if (node->rearNode != nullptr)
-				delete (node->rearNode);
-		}
-		delete tree.root;
-		tree.root = nullptr;
-
-		delete traversalStack;
-
-#ifdef _DEBUG
-		LOG("BSP tree is deallocated...");
-#endif // _DEBUG
-
+		vector<BSPNode*>* traversalList = new vector<BSPNode*>;
+		SearchAllNodesInBSPTree(traversalList);
+		DeallocateAllNodesInBSPTree(traversalList);
+		delete traversalList;
+		Log ("BSP tree is deallocated...")
 	}
-
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
+	Exit
 }
 
-/*
-	Build Dungeon
-*/
-// Build a dungeon.
+
 void RoguelikeDungeonGenerator::Build(void) {
-#ifdef _DEBUG
-	LOG("Generator.Build()");
-	_LEVEL++;
-#endif // _DEBUG
+	Enter
 
 	if (dungeon.width < 100)
 		throw new exception("The width of a dungeon must be larger than 100.");
@@ -239,68 +199,54 @@ void RoguelikeDungeonGenerator::Build(void) {
 
 	srand(time(NULL));
 	Allocate();
-	BSP();
+	BuildBSPTree();
 	PathBuild();
 
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
+	Exit
 }
-// Seperate a dungeon into pieces using BSP.
-void RoguelikeDungeonGenerator::BSP(void) {
-#ifdef _DEBUG
-	LOG(".BSP(void)");
-	_LEVEL++;
-#endif // _DEBUG
+
+void RoguelikeDungeonGenerator::SetRootOfBSPTree(void) {
+	Point upperLeft, downRight;
+	upperLeft.Init(0, 0);
+	downRight.Init(dungeon.width - 1, dungeon.height - 1);
+	tree.root->space.Init(upperLeft, downRight);
+}
+void RoguelikeDungeonGenerator::BuildBSPTree(void) {
+	Enter
 
 	queue<BSPNode*>* workQueue;
-	unsigned int count;
+	unsigned int count; // count is the number of rooms will be built.
 
-	// set the root of the BSP tree.
-	{
-		Point upperLeft, downRight;
-		upperLeft.Init(0, 0);
-		downRight.Init(dungeon.width - 1, dungeon.height - 1);
-		tree.root->space.Init(upperLeft, downRight);
-	}
+	SetRootOfBSPTree();
 
 	workQueue = new queue<BSPNode*>;
 	workQueue->push(tree.root);
-	count = pow(2, dungeon.depth) - 1; // count is the number of rooms will be built.
+	count = pow(2, dungeon.depth) - 1;
 
 	while (workQueue->empty() == false) {
 		BSPNode* node = workQueue->front();
 		workQueue->pop();
 
-#ifdef _DEBUG
-		LOGENDL();
-		cout << "Space Size is (" << node->space.upperLeft.x << ", " << node->space.upperLeft.y << ") ~ ("
-			<< node->space.downRight.x << ", " << node->space.downRight.y << ")" << endl;
-#endif // _DEBUG
+		Log ("Space Size is (" << node->space.upperLeft.x << ", " << node->space.upperLeft.y << ") ~ ("
+			<< node->space.downRight.x << ", " << node->space.downRight.y << ")")
 
 		// if dividing a dungeon is finished.
 		if (count == 0) {
-#ifdef _DEBUG
-			LOG("Reef Node....");
-#endif // _DEUB
+			Log("Reef Node....")
 
 			// build a room.
 			RandomRoomBuild(node);
 		}
 		// if dividing a dungeon is not finished.
 		else {
-#ifdef _DEBUG
-			LOG("Not Reef Node...");
-#endif // _DEBUG
+			Log ("Not Reef Node...")
 
 			node->frontNode = new BSPNode;
 			node->frontNode->space.Init(node->space.upperLeft, node->space.downRight);
 			node->rearNode = new BSPNode;
 			node->rearNode->space.Init(node->space.upperLeft, node->space.downRight);
 
-#ifdef _DEBUG
-			LOG("Child nodes are created...");
-#endif // _DEBUG
+			Log("Child nodes are created...")
 
 			// divide the given space into 2 pieces.
 			// Space is divided in vertical if isDivideInVertical is true.
@@ -316,97 +262,110 @@ void RoguelikeDungeonGenerator::BSP(void) {
 				node->frontNode->space.downRight.y = node->rearNode->space.upperLeft.y = pivot;
 			}
 
-#ifdef _DEBUG
-			LOG("	and divided into 2 areas...");
-#endif // _DEBUG
+			Log ("	and divided into 2 areas...")
 
 			// do same things to 2 divided pieces.
 			workQueue->push(node->frontNode);
 			workQueue->push(node->rearNode);
 			count--;
-
-#ifdef _DEBUG
-			if (count) cout << endl;
-#endif // _DEBUG
-
 		}
+		Log (endl)
 	}
-	
 	delete workQueue;
-
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
-
+	Exit
 }
-// Build a room in the given space.
-void RoguelikeDungeonGenerator::RandomRoomBuild(BSPNode* node) {
-#ifdef _DEBUG
-	LOG(".RandomRoomBuild(BSPNode* node)");
-	_LEVEL++;
-#endif // _DEBUG
 
-	do {
-		node->room.upperLeft.x = node->space.upperLeft.x + rand(node->space.downRight.x, node->space.upperLeft.x) / 3;
-		node->room.upperLeft.y = node->space.upperLeft.y + rand(node->space.downRight.y, node->space.upperLeft.y) / 3;
-		node->room.downRight.x = node->room.upperLeft.x + rand(node->space.downRight.x, node->space.upperLeft.x);
-		node->room.downRight.y = node->room.upperLeft.y + rand(node->space.downRight.y, node->space.upperLeft.y);
-
-/*		if (node->room.upperLeft.x > node->room.downRight.x)
-			swap(&(node->room.upperLeft.x), &(node->room.downRight.x));
-		if (node->room.upperLeft.y > node->room.downRight.y)
-			swap(&(node->room.upperLeft.y), &(node->room.downRight.y));*/
-
-	} while ( node->room.downRight.x >= node->space.downRight.x
-		|| node->room.downRight.y >= node->space.downRight.y);
-
-#ifdef _DEBUG
-	LOGENDL();
-	cout << "Room Size is (" << node->room.upperLeft.x << ", " << node->room.upperLeft.y << ") ~ ("
-		<< node->room.downRight.x << ", " << node->room.downRight.y << ")" << endl;
-#endif // _DEBUG
-
+void RoguelikeDungeonGenerator::BuildRoom(BSPNode* node) {
+		node->room.upperLeft.x = node->space.upperLeft.x + rand(node->space.upperLeft.x, node->space.downRight.x);
+		node->room.upperLeft.y = node->space.upperLeft.y + rand(node->space.upperLeft.y, node->space.downRight.y);
+		node->room.downRight.x = node->room.upperLeft.x + rand(node->room.upperLeft.x, node->space.downRight.x);
+		node->room.downRight.y = node->room.upperLeft.y + rand(node->room.upperLeft.y, node->space.downRight.y);
+}
+bool RoguelikeDungeonGenerator::RoomHasNotEnoughArea(BSPNode* node) {
+	return (node->room.downRight.x - node->room.upperLeft.x) * (node->room.downRight.y - node->room.upperLeft.y) == 0;
+}
+void RoguelikeDungeonGenerator::RecordRoomInfo(BSPNode* node) {
 	for (unsigned int i = node->room.upperLeft.x; i < node->room.downRight.x; i++)
 		for (unsigned int j = node->room.upperLeft.y; j < node->room.downRight.y; j++)
 			dungeon.info[i][j] = true;
-
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
 }
-// Build a path connecting two children of node.
+void RoguelikeDungeonGenerator::RandomRoomBuild(BSPNode* node) {
+	Enter
+
+	do {
+		BuildRoom(node);
+	} while (RoomHasNotEnoughArea(node));
+	RecordRoomInfo(node);
+
+	Log("Room Size is (" << node->room.upperLeft.x << ", " << node->room.upperLeft.y << ") ~ ("
+		<< node->room.downRight.x << ", " << node->room.downRight.y << ")")
+
+	Exit
+}
 void RoguelikeDungeonGenerator::RandomPathBuild(BSPNode* node) {
-#ifdef _DEBUG
-	LOG(".RandomPathBuild(BSPNode* node)");
-	_LEVEL++;
-#endif // _DEBUG
+	Enter
 
-	/* Not implemented yet. */
-#ifdef _DEBUG
-	LOG("Not Implemented yet...");
-#endif // _DEBUG
+	BSPNode* frontNode = node->frontNode;
+	BSPNode* rearNode = node->rearNode;
+	Point pivot;
 
+	Log ("Select Pivot")
+	pivot.x = (rearNode->room.downRight.x + frontNode->room.upperLeft.x) / 2;
+	pivot.y = (rearNode->room.downRight.y + frontNode->room.upperLeft.y) / 2;
 
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
+	Log ("Record On Dungeon Info")
+	dungeon.info[pivot.x][pivot.y] = true;
+
+	Log (pivot.x << ", " << pivot.y)
+
+	Log ("Resize Room")
+	node->room.upperLeft = frontNode->room.upperLeft;
+	node->room.downRight = rearNode->room.downRight;
+
+	if (node->isDivideInVertical) {
+
+	}
+	else {
+
+	}
+
+	Exit
 }
 // Buildd pathes between rooms.
 void RoguelikeDungeonGenerator::PathBuild(void) {
-#ifdef _DEBUG
-	LOG(".PathBuild(void)");
-	_LEVEL++;
-#endif // _DEBUG
+	Enter
 
-	/* Not implemented. */
-#ifdef _DEBUG
-	LOG("Not implemented...");
-#endif // _DEBUG
+	// traversalDeque is for search all nodes.
+	vector<BSPNode*>* nodes = new vector<BSPNode*>;
+	size_t index = 0;
+	nodes->push_back (tree.root);
 
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
+	Log ("Find All Nodes...")
+	while (true) {
+		BSPNode* node = nodes->at(index);
+		index += 1;
 
+		if (node->IsReafNode())
+			break;
+
+		nodes->push_back(node->frontNode);
+		nodes->push_back(node->rearNode);
+	}
+
+	// Build pathes between rooms. From reef node to root node.
+	Log("Build Pathes Between Rooms...")
+	while (nodes->empty() == false) {
+		BSPNode* node = nodes->at(nodes->size() - 1);
+		nodes->pop_back();
+
+		// a reaf node has no child room to connect.
+		if (node->IsReafNode())
+			continue;
+
+		RandomPathBuild (node);
+	}
+	delete nodes;
+	Exit
 }
 
 
@@ -415,14 +374,9 @@ void RoguelikeDungeonGenerator::PathBuild(void) {
 	TODO: dungeon.info is a pointer so the reference is copies. Fix it not to be copied.
 */
 DungeonInfo RoguelikeDungeonGenerator::Publish(void) {
-#ifdef _DEBUG
-	LOG("Generator.Publish(void)");
-	_LEVEL++;
-#endif // _DEBUG
+	Enter
 
-#ifdef _DEBUG
-	_LEVEL--;
-#endif // _DEBUG
+	Log ("Not Implemented")
 
-	return dungeon;
+	Exit return dungeon;
 }
