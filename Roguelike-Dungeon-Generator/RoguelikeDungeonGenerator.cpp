@@ -276,13 +276,25 @@ void RoguelikeDungeonGenerator::BuildBSPTree(void) {
 }
 
 void RoguelikeDungeonGenerator::BuildRoom(BSPNode* node) {
-		node->room.upperLeft.x = node->space.upperLeft.x + rand(node->space.upperLeft.x, node->space.downRight.x);
-		node->room.upperLeft.y = node->space.upperLeft.y + rand(node->space.upperLeft.y, node->space.downRight.y);
-		node->room.downRight.x = node->room.upperLeft.x + rand(node->room.upperLeft.x, node->space.downRight.x);
-		node->room.downRight.y = node->room.upperLeft.y + rand(node->room.upperLeft.y, node->space.downRight.y);
+	node->room.upperLeft.x = node->space.upperLeft.x + rand(node->space.upperLeft.x, node->space.downRight.x);
+	node->room.upperLeft.y = node->space.upperLeft.y + rand(node->space.upperLeft.y, node->space.downRight.y);
+	node->room.downRight.x = node->room.upperLeft.x + rand(node->room.upperLeft.x, node->space.downRight.x);
+	node->room.downRight.y = node->room.upperLeft.y + rand(node->room.upperLeft.y, node->space.downRight.y);
 }
 bool RoguelikeDungeonGenerator::RoomHasNotEnoughArea(BSPNode* node) {
-	return (node->room.downRight.x - node->room.upperLeft.x) * (node->room.downRight.y - node->room.upperLeft.y) == 0;
+	unsigned int roomWidth, roomHeight, roomArea;
+	unsigned int spaceWidth, spaceHeight, spaceArea;
+
+	roomWidth = (node->room.downRight.x - node->room.upperLeft.x);
+	roomHeight = (node->room.downRight.y - node->room.upperLeft.y);
+	roomArea = roomWidth * roomHeight;
+
+	spaceWidth = (node->space.downRight.x - node->space.upperLeft.x);
+	spaceHeight = (node->space.downRight.y - node->space.upperLeft.y);
+	spaceArea = spaceWidth * spaceHeight;
+
+	return (double)roomArea >= (double)spaceArea * 0.8f
+		|| (double)roomArea <= (double)spaceArea * 0.5f;
 }
 void RoguelikeDungeonGenerator::RecordRoomInfo(BSPNode* node) {
 	for (unsigned int i = node->room.upperLeft.x; i < node->room.downRight.x; i++)
