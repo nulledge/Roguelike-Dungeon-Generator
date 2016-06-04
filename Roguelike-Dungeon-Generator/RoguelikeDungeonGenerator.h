@@ -93,6 +93,12 @@ private:
 	bool RoomHasNotEnoughArea(BSPNode* node);
 	void RecordRoomInfo(BSPNode* node);
 
+	// Methods used in RandomPathBuild(BSPNode* node)
+	void SelectPivot(BSPNode* node, Point* pivot);
+	void UniteTwoRoomsIntoOneRoom(BSPNode* node);
+	bool PathNeedCorner(BSPNode* node);
+	void RecordPathInfo(BSPNode* node, Point* start, Point* end);
+
 	// Methods used in Setters
 	bool WidthIsChanged(unsigned int width);
 	bool HeightIsChanged(unsigned int height);

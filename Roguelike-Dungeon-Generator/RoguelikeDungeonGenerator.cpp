@@ -190,13 +190,6 @@ void RoguelikeDungeonGenerator::Deallocate(void) {
 void RoguelikeDungeonGenerator::Build(void) {
 	Enter
 
-	if (dungeon.width < 100)
-		throw new exception("The width of a dungeon must be larger than 100.");
-	if (dungeon.height < 100)
-		throw new exception("The height of a dungeon must be larger than 100.");
-	if (dungeon.width * dungeon.height < pow(2, dungeon.depth) * 30)
-		throw new exception("The depth of a dungeon must be larger.");
-
 	srand(time(NULL));
 	Allocate();
 	BuildBSPTree();
@@ -314,32 +307,91 @@ void RoguelikeDungeonGenerator::RandomRoomBuild(BSPNode* node) {
 
 	Exit
 }
+bool RoguelikeDungeonGenerator::PathNeedCorner(BSPNode* node) {
+	BSPNode* frontNode = node->frontNode;
+	BSPNode* rearNode = node->rearNode;
+
+	if (node->isDivideInVertical) 
+		return (frontNode->room.downRight.y <= rearNode->room.upperLeft.y
+			|| frontNode->room.upperLeft.y >= rearNode->room.downRight.y) == false;
+	else
+		return (frontNode->room.downRight.x <= rearNode->room.upperLeft.x
+			|| frontNode->room.upperLeft.x >= rearNode->room.downRight.x) == false;
+}
+void RoguelikeDungeonGenerator::SelectPivot(BSPNode* node, Point* pivot) {
+	BSPNode* frontNode = node->frontNode;
+	BSPNode* rearNode = node->rearNode;
+	pivot->x = (rearNode->room.downRight.x + frontNode->room.upperLeft.x) / 2;
+	pivot->y = (rearNode->room.downRight.y + frontNode->room.upperLeft.y) / 2;
+}
+void RoguelikeDungeonGenerator::UniteTwoRoomsIntoOneRoom(BSPNode* node) {
+	BSPNode* frontNode = node->frontNode;
+	BSPNode* rearNode = node->rearNode;
+	node->room.upperLeft.Init(min(frontNode->room.upperLeft.x, rearNode->room.upperLeft.x),
+		min(frontNode->room.upperLeft.y, rearNode->room.upperLeft.y));
+	node->room.downRight.Init(max(frontNode->room.downRight.x, rearNode->room.downRight.x),
+		max(frontNode->room.downRight.y, rearNode->room.downRight.y));
+}
+void RoguelikeDungeonGenerator::RecordPathInfo(BSPNode* node, Point* start, Point* end) {
+	unsigned int x, y;
+	if (start->x == end->x) {
+		x = start->x;
+		for (y = start->y; y < end->y; y++)
+			dungeon.info[x][y] = true;
+		for (y = end->y; y < dungeon.height; y++) {
+			if (dungeon.info[x][y])
+				break;
+			dungeon.info[x][y] = true;
+		}
+		for (y = start->y - 1; y >= 0; y--) {
+			if (dungeon.info[x][y])
+				break;
+			dungeon.info[x][y] = true;
+		}
+	}
+	else {
+		y = start->y;
+		for (x = start->x; x < end->x; x++)
+			dungeon.info[x][y] = true;
+		for (x = end->x; x < dungeon.width; x++) {
+			if (dungeon.info[x][y])
+				break;
+			dungeon.info[x][y] = true;
+		}
+		for (x = start->x - 1; x >= 0; x--) {
+			if (dungeon.info[x][y])
+				break;
+			dungeon.info[x][y] = true;
+		}
+	}
+}
 void RoguelikeDungeonGenerator::RandomPathBuild(BSPNode* node) {
 	Enter
 
 	BSPNode* frontNode = node->frontNode;
 	BSPNode* rearNode = node->rearNode;
-	Point pivot;
+	Point* pivot = new Point;
+	Point* start = new Point;
+	Point* end = new Point;
 
-	Log ("Select Pivot")
-	pivot.x = (rearNode->room.downRight.x + frontNode->room.upperLeft.x) / 2;
-	pivot.y = (rearNode->room.downRight.y + frontNode->room.upperLeft.y) / 2;
-
-	Log ("Record On Dungeon Info")
-	dungeon.info[pivot.x][pivot.y] = true;
-
-	Log (pivot.x << ", " << pivot.y)
-
-	Log ("Resize Room")
-	node->room.upperLeft = frontNode->room.upperLeft;
-	node->room.downRight = rearNode->room.downRight;
-
+	SelectPivot(node, pivot);
+	UniteTwoRoomsIntoOneRoom(node);
 	if (node->isDivideInVertical) {
-
+		start->x = frontNode->room.downRight.x;
+		end->x = rearNode->room.upperLeft.x;
+		start->y = end->y = pivot->y;
+		RecordPathInfo(node, start, end);
 	}
 	else {
-
+		start->y = frontNode->room.downRight.y;
+		end->y = rearNode->room.upperLeft.y;
+		start->x = end->x = pivot->x;
+		RecordPathInfo(node, start, end);
 	}
+
+	delete pivot;
+	delete start;
+	delete end;
 
 	Exit
 }
@@ -387,7 +439,17 @@ void RoguelikeDungeonGenerator::PathBuild(void) {
 DungeonInfo RoguelikeDungeonGenerator::Publish(void) {
 	Enter
 
-	Log ("Not Implemented")
+	DungeonInfo ReturnValue;
 
-	Exit return dungeon;
+	ReturnValue.width = dungeon.width;
+	ReturnValue.height = dungeon.height;
+	ReturnValue.depth = dungeon.depth;
+	ReturnValue.info = new bool*[ReturnValue.width];
+	for (unsigned int i = 0; i < ReturnValue.width; i++) {
+		ReturnValue.info[i] = new bool[ReturnValue.height];
+		for (unsigned int j = 0; j < ReturnValue.height; j++)
+			ReturnValue.info[i][j] = dungeon.info[i][j];
+	}
+
+	Exit return ReturnValue;
 }
